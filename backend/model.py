@@ -12,7 +12,7 @@ def tensor_to_image(tensor):
     return PIL.Image.fromarray(tensor)
 
 def load_img(path_to_img):
-    max_dim = 512
+    max_dim = 256  # Reduced from 512
     img = tf.io.read_file(path_to_img)
     img = tf.image.decode_image(img, channels=3)
     img = tf.image.convert_image_dtype(img, tf.float32)
@@ -70,7 +70,12 @@ class StyleContentModel(tf.keras.models.Model):
 
         return {'content': content_dict, 'style': style_dict}
 
-def style_transfer(content_path, style_path, output_path):
+# In the style_transfer function, add better error handling for saving the result
+
+def style_transfer(content_path, style_path, output_path, update_progress=None):
+    # Reduce image dimensions to save memory
+    max_dim = 256  # Reduced from 512
+    
     content_image = load_img(content_path)
     style_image = load_img(style_path)
     
@@ -120,14 +125,100 @@ def style_transfer(content_path, style_path, output_path):
         
         return loss
     
-    epochs = 10
-    steps_per_epoch = 100
+    # Reduce the number of iterations to save memory and time
+    epochs = 5  # Reduced from 10
+    steps_per_epoch = 50  # Reduced from 100
+    
+    # Calculate total steps for progress reporting
+    total_steps = epochs * steps_per_epoch
+    
+    # Add memory cleanup between epochs and show progress
+    print("Starting style transfer (0% complete)...")
+    step_count = 0
+    
+    # Update the progress at the start
+    if update_progress:
+        try:
+            update_progress(0)
+            print("Initial progress set to 0%")
+        except Exception as e:
+            print(f"Error updating initial progress: {str(e)}")
+    
+    # Track last reported progress to avoid duplicate updates
+    last_reported_progress = 0
     
     for n in range(epochs):
         for m in range(steps_per_epoch):
             train_step(image)
+            step_count += 1
+            
+            # Calculate current progress
+            current_progress = int((step_count / total_steps) * 100)
+            
+            # Update progress more frequently
+            if step_count % 5 == 0 or current_progress > last_reported_progress:
+                print(f"Style transfer progress: {current_progress}% complete")
+                
+                # Update the progress
+                if update_progress:
+                    try:
+                        update_progress(current_progress)
+                        print(f"Progress updated to {current_progress}%")
+                        
+                        # Save intermediate result every 10% progress
+                        if current_progress % 10 == 0 or current_progress >= 50:
+                            try:
+                                intermediate_result = tensor_to_image(image)
+                                intermediate_result.save(output_path)
+                                print(f"Saved intermediate result at {current_progress}% to {output_path}")
+                            except Exception as e:
+                                print(f"Error saving intermediate result: {str(e)}")
+                    except Exception as e:
+                        print(f"Error updating progress: {str(e)}")
+                
+                last_reported_progress = current_progress
+        
+        # Force garbage collection after each epoch
+        import gc
+        gc.collect()
     
-    result = tensor_to_image(image)
-    result.save(output_path)
+    print("Style transfer complete (100%)!")
+    # Ensure final progress is 100%
+    if update_progress:
+        try:
+            update_progress(100)
+            print("Final progress set to 100%")
+        except Exception as e:
+            print(f"Error updating final progress: {str(e)}")
+    
+    # At the end of the function, add better error handling for saving the result
+    try:
+        # Save intermediate results periodically
+        if step_count % 25 == 0 or current_progress >= 50:
+            intermediate_result = tensor_to_image(image)
+            intermediate_result.save(output_path)
+            print(f"Saved intermediate result at {current_progress}% to {output_path}")
+    except Exception as e:
+        print(f"Error saving intermediate result: {str(e)}")
+    
+    # At the very end of the function, ensure the final result is saved
+    try:
+        print("Saving final result image...")
+        result = tensor_to_image(image)
+        result.save(output_path)
+        print(f"Final result image saved to {output_path}")
+        
+        # Ensure final progress is 100%
+        if update_progress:
+            update_progress(100)
+            print("Final progress set to 100%")
+    except Exception as e:
+        print(f"Error saving final result image: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+    
+    # Final cleanup
+    import gc
+    gc.collect()
     
     return output_path
