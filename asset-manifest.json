@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/image-style-transfer-app/static/css/main.747b6628.css",
+    "main.js": "/image-style-transfer-app/static/js/main.6b06f54d.js",
+    "index.html": "/image-style-transfer-app/index.html",
+    "main.747b6628.css.map": "/image-style-transfer-app/static/css/main.747b6628.css.map",
+    "main.6b06f54d.js.map": "/image-style-transfer-app/static/js/main.6b06f54d.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.747b6628.css",
+    "static/js/main.6b06f54d.js"
+  ]
+}
